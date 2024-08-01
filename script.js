@@ -14,11 +14,13 @@ let grid = [];
 let specialCellGrid = [];
 let currentPlayer = 0;
 let gameOver = false;
+let playerBlockCount = 0;
+let aiBlockCount = 0;
+const maxBlockUses = 5;
 
 canvas.width = gridSize * cellSize;
 canvas.height = gridSize * cellSize;
 
-// Initialize grid
 function initGrid() {
     grid = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
     specialCellGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(null));
@@ -26,10 +28,10 @@ function initGrid() {
     drawGrid();
     gameOver = false;
     document.getElementById('gameOver').classList.add('hidden');
+    document.getElementById('restartButton').style.display = 'none';
     updateScores();
 }
 
-// Draw grid and cells
 function drawGrid() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
     for (let y = 0; y < gridSize; y++) {
@@ -48,7 +50,6 @@ function drawGrid() {
     }
 }
 
-// Place special cells randomly
 function placeSpecialCells() {
     for (let i = 0; i < 5; i++) {
         let x = Math.floor(Math.random() * gridSize);
@@ -57,7 +58,6 @@ function placeSpecialCells() {
     }
 }
 
-// Handle click events
 canvas.addEventListener('click', (e) => {
     if (!gameOver && currentPlayer === 0) {
         const rect = canvas.getBoundingClientRect();
@@ -78,23 +78,24 @@ canvas.addEventListener('click', (e) => {
     }
 });
 
-// Apply special cell effects
 function applySpecialCellEffects(x, y) {
     switch (specialCellGrid[y][x]) {
         case 0: doubleRegion(x, y); break;
         case 1: reverseColors(x, y); break;
-        case 2: blockArea(x, y); break;
+        case 2: if (currentPlayer === 0 && playerBlockCount < maxBlockUses || currentPlayer === 1 && aiBlockCount < maxBlockUses) {
+                    blockArea(x, y);
+                    currentPlayer === 0 ? playerBlockCount++ : aiBlockCount++;
+                }
+                break;
         case 3: revealEmptyCells(x, y); break;
     }
 }
 
-// Double the size of the player's region
 function doubleRegion(x, y) {
     // Implement the logic to double the size of the player's region
     console.log('Double region effect applied.');
 }
 
-// Reverse the colors of adjacent cells
 function reverseColors(x, y) {
     const adjacentCells = [
         { x: x - 1, y: y },
@@ -111,7 +112,6 @@ function reverseColors(x, y) {
     });
 }
 
-// Block an area
 function blockArea(x, y) {
     // Example: Block a 2x2 area around the special cell
     for (let i = -1; i <= 1; i++) {
@@ -126,7 +126,6 @@ function blockArea(x, y) {
     drawGrid();
 }
 
-// Reveal empty cells
 function revealEmptyCells(x, y) {
     // Example: Reveal a 3x3 area around the special cell
     for (let i = -1; i <= 1; i++) {
@@ -143,7 +142,6 @@ function revealEmptyCells(x, y) {
     drawGrid();
 }
 
-// Simple AI move function
 function aiMove() {
     let emptyCells = [];
     for (let y = 0; y < gridSize; y++) {
@@ -167,7 +165,6 @@ function aiMove() {
     }
 }
 
-// Check if the game is over
 function checkForGameOver() {
     // Check if there are any empty cells left
     for (let y = 0; y < gridSize; y++) {
@@ -180,7 +177,6 @@ function checkForGameOver() {
     return true;
 }
 
-// End the game and show winner
 function endGame() {
     gameOver = true;
     const player1Score = countCellsForPlayer(0);
@@ -195,9 +191,9 @@ function endGame() {
     }
     document.getElementById('winnerText').textContent = winner;
     document.getElementById('gameOver').classList.remove('hidden');
+    document.getElementById('restartButton').style.display = 'block'; // Show the restart button
 }
 
-// Count cells for a player
 function countCellsForPlayer(player) {
     let count = 0;
     for (let y = 0; y < gridSize; y++) {
@@ -210,17 +206,27 @@ function countCellsForPlayer(player) {
     return count;
 }
 
-// Update the scores in real-time
 function updateScores() {
     document.getElementById('playerScore').textContent = `Player 1 (Red): ${countCellsForPlayer(0)}`;
     document.getElementById('aiScore').textContent = `AI (Blue): ${countCellsForPlayer(1)}`;
 }
 
-// Restart the game
 document.getElementById('resetButton').addEventListener('click', initGrid);
 document.getElementById('restartButton').addEventListener('click', () => {
     initGrid();
     document.getElementById('gameOver').classList.add('hidden');
+    document.getElementById('restartButton').style.display = 'none'; // Hide restart button after restart
+});
+
+document.getElementById('rulesButton').addEventListener('click', () => {
+    const rulesSection = document.getElementById('rules');
+    if (rulesSection.classList.contains('hidden')) {
+        rulesSection.classList.remove('hidden');
+        document.getElementById('rulesButton').textContent = 'Hide Rules';
+    } else {
+        rulesSection.classList.add('hidden');
+        document.getElementById('rulesButton').textContent = 'Show Rules';
+    }
 });
 
 // Initialize the game

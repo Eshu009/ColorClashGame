@@ -15,6 +15,55 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         <button id="resetButton">Reset Game</button>
+        <button id="rulesButton">Show Rules</button>
+        <div id="rules" class="hidden">
+            <h2>Game Rules</h2>
+            <ul>
+                <li><strong>Click on a cell</strong> to place your color.</li>
+                <li><strong>Special cells</strong> apply effects such as doubling regions, reversing colors, blocking areas, or revealing empty cells.</li>
+                <li><strong>Each power-up</strong> can only be used a limited number of times.</li>
+                <li><strong>The game ends</strong> when no empty cells are left.</li>
+                <li><strong>The player with the most cells</strong> in their color wins.</li>
+            </ul>
+            <h3>Power-Up Colors</h3>
+            <div class="power-up">
+                <div class="color-box" style="background-color: #FF0000;"></div>
+                <div class="color-description">
+                    <strong>Red:</strong> Place your color to claim a cell.
+                </div>
+            </div>
+            <div class="power-up">
+                <div class="color-box" style="background-color: #0000FF;"></div>
+                <div class="color-description">
+                    <strong>Blue:</strong> AI color; place to claim a cell.
+                </div>
+            </div>
+            <div class="power-up">
+                <div class="color-box" style="background-color: #00FF00;"></div>
+                <div class="color-description">
+                    <strong>Green:</strong> Doubles the size of the player's region.
+                </div>
+            </div>
+            <div class="power-up">
+                <div class="color-box" style="background-color: #FFFF00;"></div>
+                <div class="color-description">
+                    <strong>Yellow:</strong> Reverses colors of adjacent cells.
+                </div>
+            </div>
+            <div class="power-up">
+                <div class="color-box" style="background-color: #FF00FF;"></div>
+                <div class="color-description">
+                    <strong>Magenta:</strong> Blocks an area around the cell.
+                </div>
+            </div>
+            <div class="power-up">
+                <div class="color-box" style="background-color: #00FFFF;"></div>
+                <div class="color-description">
+                    <strong>Cyan:</strong> Reveals empty cells around the special cell.
+                </div>
+            </div>
+        </div>
+        
         <div id="gameOver" class="hidden">
             <h2 id="winnerText"></h2>
             <button id="restartButton">Play Again</button>

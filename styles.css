@@ -57,5 +57,34 @@ button:hover {
 
 #restartButton {
     padding: 10px 20px;
-    font-size: 16px;
+    font-size: 16px;
 }
+
+#rules {
+    margin-top: 20px;
+    padding: 20px;
+    border: 2px solid #000;
+    background-color: #fff;
+}
+
+.hidden {
+    display: none;
+}
+
+.power-up {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.color-box {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #000;
+    margin-right: 10px;
+}
+
+.color-description {
+    font-size: 16px;
+}
+
