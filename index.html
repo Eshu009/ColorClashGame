@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Clash</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Color Clash</h1>
+    <div id="scoreboard">
+        <div id="playerScore">Player 1 (Red): 0</div>
+        <div id="aiScore">AI (Blue): 0</div>
+    </div>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <button id="resetButton">Reset Game</button>
+        <div id="gameOver" class="hidden">
+            <h2 id="winnerText"></h2>
+            <button id="restartButton">Play Again</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
