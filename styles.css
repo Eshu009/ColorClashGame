@@ -46,6 +46,7 @@ button:hover {
 }
 
 #gameOver {
+    text-align: center;
     margin-top: 20px;
 }
 
