@@ -72,17 +72,31 @@ jobs:
 
           # Include release notes (if available)
           if [[ "$EVENT_TYPE" == "created" || "$EVENT_TYPE" == "edited" ]]; then
+            # Display the full release notes on edit or creation
             RELEASE_NOTES="${{ github.event.release.body }}"
-            SLACK_MESSAGE="${SLACK_MESSAGE}, 
-              {
-                \"type\": \"section\",
-                \"fields\": [
-                  {
-                    \"type\": \"mrkdwn\",
-                    \"text\": \"*Release Notes:* $RELEASE_NOTES\"
-                  }
-                ]
-              }"
+            if [[ "$EVENT_TYPE" == "created" ]]; then
+              SLACK_MESSAGE="${SLACK_MESSAGE}, 
+                {
+                  \"type\": \"section\",
+                  \"fields\": [
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Release Notes:* $RELEASE_NOTES\"
+                    }
+                  ]
+                }"
+            elif [[ "$EVENT_TYPE" == "edited" ]]; then
+              SLACK_MESSAGE="${SLACK_MESSAGE}, 
+                {
+                  \"type\": \"section\",
+                  \"fields\": [
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Updated Release Notes:* $RELEASE_NOTES\"
+                    }
+                  ]
+                }"
+            fi
           fi
 
           # Close the JSON structure for the Slack message
