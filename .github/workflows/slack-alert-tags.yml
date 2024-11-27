@@ -34,18 +34,12 @@ jobs:
 
           # Get release information (if applicable)
           RELEASE_NAME="None"
-          RELEASE_URL=""
           if [[ "$ACTION" == "Created" ]]; then
             # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
               jq -r '.name // "None"')
-            
-            # Get release URL if release is found
-            if [[ "$RELEASE_NAME" != "None" ]]; then
-              RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
-            fi
           fi
 
           # Send message to Slack
@@ -71,7 +65,12 @@ jobs:
                     {
                       \"type\": \"mrkdwn\",
                       \"text\": \"*Action:* $ACTION\"
-                    },
+                    }
+                  ]
+                },
+                {
+                  \"type\": \"section\",
+                  \"fields\": [
                     {
                       \"type\": \"mrkdwn\",
                       \"text\": \"*User:* $ACTOR\"
@@ -79,10 +78,15 @@ jobs:
                     {
                       \"type\": \"mrkdwn\",
                       \"text\": \"*Repository:* <$REPO_URL|$REPO_NAME>\"
-                    },
+                    }
+                  ]
+                },
+                {
+                  \"type\": \"section\",
+                  \"fields\": [
                     {
                       \"type\": \"mrkdwn\",
-                      \"text\": \"*Release:* $(if [[ \"$RELEASE_NAME\" != \"None\" ]]; then echo \"<${RELEASE_URL}|$RELEASE_NAME>\"; else echo \"$RELEASE_NAME\"; fi)\"
+                      \"text\": \"*Release:* $RELEASE_NAME\"
                     },
                     {
                       \"type\": \"mrkdwn\",
