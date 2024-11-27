@@ -32,21 +32,18 @@ jobs:
             ACTION="Deleted"
           fi
 
-          # Initialize release name
+          # Get release information (if applicable)
           RELEASE_NAME="None"
-
-          # Fetch release info only when tag is created
           if [[ "$ACTION" == "Created" ]]; then
-            # Get release information using the GitHub API
-            # Check if a release exists for the tag
+            # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
               jq -r '.name // "None"')
           fi
 
-          # Start building the Slack message
-          MESSAGE="{
+          # Prepare the message blocks
+          SLACK_MESSAGE="{
             \"blocks\": [
               {
                 \"type\": \"header\",
@@ -61,7 +58,7 @@ jobs:
                 \"fields\": [
                   {
                     \"type\": \"mrkdwn\",
-                    \"text\": \"*Tag Name:* <${TAG_URL}|$REF>\"
+                    \"text\": \"*Tag Name:* <$TAG_URL|$REF>\"
                   },
                   {
                     \"type\": \"mrkdwn\",
@@ -82,24 +79,27 @@ jobs:
                 ]
               }"
 
-          # Add release information if tag was created and associated with a release
-          if [[ "$ACTION" == "Created" && "$RELEASE_NAME" != "None" ]]; then
-            MESSAGE+=", {
-              \"type\": \"section\",
-              \"fields\": [
-                {
-                  \"type\": \"mrkdwn\",
-                  \"text\": \"*Release:* $RELEASE_NAME\"
-                }
-              ]
-            }"
+          # Include release information only if the tag is created
+          if [[ "$ACTION" == "Created" ]]; then
+            SLACK_MESSAGE="${SLACK_MESSAGE}, 
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Release:* $RELEASE_NAME\"
+                  }
+                ]
+              }"
           fi
 
-          MESSAGE+="]
-        }"
+          # Close the JSON structure for the Slack message
+          SLACK_MESSAGE="${SLACK_MESSAGE}
+            ]
+          }"
 
-          # Send message to Slack
+          # Send the message to Slack
           curl -X POST \
             -H 'Content-type: application/json; charset=utf-8' \
-            --data "$MESSAGE" \
+            --data "$SLACK_MESSAGE" \
           $SLACK_WEBHOOK_URL
