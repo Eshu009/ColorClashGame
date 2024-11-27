@@ -22,6 +22,7 @@ jobs:
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
+          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
           TIMESTAMP=$(date -u)
 
           # Determine action type
@@ -29,6 +30,16 @@ jobs:
             ACTION="Created"
           elif [[ "$EVENT_TYPE" == "delete" ]]; then
             ACTION="Deleted"
+          fi
+
+          # Get release information (if applicable)
+          RELEASE_NAME="None"
+          if [[ "$ACTION" == "Created" ]]; then
+            # Use GitHub API to get release information for the tag
+            RELEASE_NAME=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
+              jq -r '.name // "None"')
           fi
 
           # Send message to Slack
@@ -62,6 +73,14 @@ jobs:
                     {
                       \"type\": \"mrkdwn\",
                       \"text\": \"*Repository:* <$REPO_URL|$REPO_NAME>\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Tag URL:* <$TAG_URL|$REF>\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Release:* $RELEASE_NAME\"
                     },
                     {
                       \"type\": \"mrkdwn\",
