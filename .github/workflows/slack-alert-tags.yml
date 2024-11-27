@@ -7,6 +7,9 @@ on:
   delete:
     tags:
       - "*"
+  release:
+    types:
+      - edited
 
 jobs:
   slack:
@@ -30,16 +33,29 @@ jobs:
             ACTION="Created"
           elif [[ "$EVENT_TYPE" == "delete" ]]; then
             ACTION="Deleted"
+          elif [[ "$EVENT_TYPE" == "release" && "${{ github.event.action }}" == "edited" ]]; then
+            ACTION="Release Modified"
           fi
 
           # Get release information (if applicable)
           RELEASE_NAME="None"
+          RELEASE_URL=""
           if [[ "$ACTION" == "Created" ]]; then
             # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
               jq -r '.name // "None"')
+            RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
+          fi
+
+          # Get release notes modification details if action is "Release Modified"
+          RELEASE_MODIFIED_USER=""
+          RELEASE_MODIFIED_NOTES=""
+          if [[ "$ACTION" == "Release Modified" ]]; then
+            RELEASE_MODIFIED_USER="${{ github.actor }}"
+            RELEASE_MODIFIED_NOTES="${{ github.event.release.body }}"
+            RELEASE_URL="https://github.com/${{ github.repository }}/releases/${{ github.event.release.id }}"
           fi
 
           # Send message to Slack
@@ -60,7 +76,7 @@ jobs:
                   \"fields\": [
                     {
                       \"type\": \"mrkdwn\",
-                      \"text\": \"*Tag Name:* \`$REF\`\"
+                      \"text\": \"*Tag Name:* <${TAG_URL}|$REF>\"
                     },
                     {
                       \"type\": \"mrkdwn\",
@@ -76,18 +92,27 @@ jobs:
                     },
                     {
                       \"type\": \"mrkdwn\",
-                      \"text\": \"*Tag URL:* <$TAG_URL|$REF>\"
-                    },
-                    {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"*Release:* $RELEASE_NAME\"
-                    },
-                    {
-                      \"type\": \"mrkdwn\",
                       \"text\": \"*Timestamp:* $TIMESTAMP\"
                     }
                   ]
                 }
+                $(if [[ "$ACTION" == "Release Modified" ]]; then echo ",{
+                  \"type\": \"section\",
+                  \"fields\": [
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Release Modified by:* $RELEASE_MODIFIED_USER\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Modified Notes:* $RELEASE_MODIFIED_NOTES\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Release URL:* <$RELEASE_URL|$RELEASE_NAME>\"
+                    }
+                  ]
+                }"; fi)
               ]
             }" \
           $SLACK_WEBHOOK_URL
