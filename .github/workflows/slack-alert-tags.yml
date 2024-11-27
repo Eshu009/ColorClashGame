@@ -2,11 +2,11 @@ name: slack-tag-events
 
 on:
   create:
-    branches-ignore: # Ignore branch creation
-      - '**'
+    tags:
+      - "*"
   delete:
-    branches-ignore: # Ignore branch deletion
-      - '**'
+    tags:
+      - "*"
 
 jobs:
   slack:
@@ -20,8 +20,8 @@ jobs:
           EVENT_TYPE="${{ github.event_name }}"
           REF="${{ github.event.ref }}"
           ACTOR="${{ github.actor }}"
-          REPO_NAME="${{ github.repository.name }}"
-          REPO_URL="${{ github.repository.html_url }}"
+          REPO_NAME="${{ github.repository }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
           TIMESTAMP=$(date -u)
 
           # Determine action type
