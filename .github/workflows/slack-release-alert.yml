@@ -1,0 +1,97 @@
+name: slack-release-events
+
+on:
+  release:
+    types:
+      - created
+      - edited
+      - deleted
+
+jobs:
+  slack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOOK_URL }}
+        run: |
+          # Extract event data
+          EVENT_TYPE="${{ github.event.action }}"
+          RELEASE_NAME="${{ github.event.release.name }}"
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+          REPO_NAME="${{ github.repository }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+          USER="${{ github.actor }}"
+          TIMESTAMP=$(date -u)
+
+          # Prepare the message blocks
+          SLACK_MESSAGE="{
+            \"blocks\": [
+              {
+                \"type\": \"header\",
+                \"text\": {
+                  \"type\": \"plain_text\",
+                  \"text\": \"Release Event: $EVENT_TYPE\",
+                  \"emoji\": true
+                }
+              },
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Release Name:* \`$RELEASE_NAME\`\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Release Tag:* \`$RELEASE_TAG\`\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Action:* $EVENT_TYPE\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*User:* $USER\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Repository:* <$REPO_URL|$REPO_NAME>\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Release URL:* <$RELEASE_URL|$RELEASE_TAG>\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Timestamp:* $TIMESTAMP\"
+                  }
+                ]
+              }"
+
+          # Include release notes (if available)
+          if [[ "$EVENT_TYPE" == "created" || "$EVENT_TYPE" == "edited" ]]; then
+            RELEASE_NOTES="${{ github.event.release.body }}"
+            SLACK_MESSAGE="${SLACK_MESSAGE}, 
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Release Notes:* $RELEASE_NOTES\"
+                  }
+                ]
+              }"
+          fi
+
+          # Close the JSON structure for the Slack message
+          SLACK_MESSAGE="${SLACK_MESSAGE}
+            ]
+          }"
+
+          # Send the message to Slack
+          curl -X POST \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "$SLACK_MESSAGE" \
+          $SLACK_WEBHOOK_URL
