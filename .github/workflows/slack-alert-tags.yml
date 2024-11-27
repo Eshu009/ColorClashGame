@@ -1,0 +1,74 @@
+name: slack-tag-events
+
+on:
+  create:
+    branches-ignore: # Ignore branch creation
+      - '**'
+  delete:
+    branches-ignore: # Ignore branch deletion
+      - '**'
+
+jobs:
+  slack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOOK_URL }}
+        run: |
+          # Extract event data
+          EVENT_TYPE="${{ github.event_name }}"
+          REF="${{ github.event.ref }}"
+          ACTOR="${{ github.actor }}"
+          REPO_NAME="${{ github.repository.name }}"
+          REPO_URL="${{ github.repository.html_url }}"
+          TIMESTAMP=$(date -u)
+
+          # Determine action type
+          if [[ "$EVENT_TYPE" == "create" ]]; then
+            ACTION="Created"
+          elif [[ "$EVENT_TYPE" == "delete" ]]; then
+            ACTION="Deleted"
+          fi
+
+          # Send message to Slack
+          curl -X POST \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "{
+              \"blocks\": [
+                {
+                  \"type\": \"header\",
+                  \"text\": {
+                    \"type\": \"plain_text\",
+                    \"text\": \"Tag Event: $ACTION\",
+                    \"emoji\": true
+                  }
+                },
+                {
+                  \"type\": \"section\",
+                  \"fields\": [
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Tag Name:* \`$REF\`\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Action:* $ACTION\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*User:* $ACTOR\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Repository:* <$REPO_URL|$REPO_NAME>\"
+                    },
+                    {
+                      \"type\": \"mrkdwn\",
+                      \"text\": \"*Timestamp:* $TIMESTAMP\"
+                    }
+                  ]
+                }
+              ]
+            }" \
+          $SLACK_WEBHOOK_URL
