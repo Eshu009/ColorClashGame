@@ -2,13 +2,13 @@ name: slack-tag-events
 
 on:
   create:
-    # Trigger only when a tag is explicitly created
-    refs:
-      - "refs/tags/*"
+    # Restrict the event to tags only
+    tags:
+      - "*"  # Matches any tag
   delete:
-    # Trigger only when a tag is explicitly deleted
-    refs:
-      - "refs/tags/*"
+    # Restrict the event to tags only
+    tags:
+      - "*"
 
 jobs:
   slack:
