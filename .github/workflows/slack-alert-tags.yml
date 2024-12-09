@@ -2,11 +2,13 @@ name: slack-tag-events
 
 on:
   create:
-    tags:
-      - "*"
+    # Trigger only when a tag is explicitly created
+    refs:
+      - "refs/tags/*"
   delete:
-    tags:
-      - "*"
+    # Trigger only when a tag is explicitly deleted
+    refs:
+      - "refs/tags/*"
 
 jobs:
   slack:
@@ -18,7 +20,7 @@ jobs:
         run: |
           # Extract event data
           EVENT_TYPE="${{ github.event_name }}"
-          REF="${{ github.event.ref }}"
+          REF="${{ github.ref }}"
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
