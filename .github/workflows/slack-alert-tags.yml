@@ -1,9 +1,12 @@
 name: slack-tag-events
 
 on:
-  push:
+  create:
     tags:
-      - "v*"  # Matches any tag starting with "v"
+      - "v*"  # This ensures the tag starts with 'v'
+  delete:
+    tags:
+      - "v*"  # This ensures the tag starts with 'v'
 
 jobs:
   slack:
@@ -15,27 +18,33 @@ jobs:
         run: |
           # Extract event data
           EVENT_TYPE="${{ github.event_name }}"
-          REF="${{ github.ref }}"
+          REF="${{ github.event.ref }}"
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
-          TAG_NAME="${REF#refs/tags/}"
-          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
+          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
           TIMESTAMP=$(date -u)
 
           # Determine action type
-          if [[ "$EVENT_TYPE" == "push" && "$GITHUB_EVENT_BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+          if [[ "$EVENT_TYPE" == "create" ]]; then
             ACTION="Created"
-          elif [[ "$EVENT_TYPE" == "push" && "$GITHUB_EVENT_AFTER" == "0000000000000000000000000000000000000000" ]]; then
+          elif [[ "$EVENT_TYPE" == "delete" ]]; then
             ACTION="Deleted"
           fi
 
-          # Get release information (only for creation)
+          # Check if the tag starts with 'v'
+          if [[ ! "$REF" =~ ^refs/tags/v ]]; then
+            echo "Tag does not start with 'v', skipping Slack notification."
+            exit 0
+          fi
+
+          # Get release information (if applicable)
           RELEASE_NAME="None"
           if [[ "$ACTION" == "Created" ]]; then
+            # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}" | \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
               jq -r '.name // "None"')
           fi
 
@@ -55,7 +64,7 @@ jobs:
                 \"fields\": [
                   {
                     \"type\": \"mrkdwn\",
-                    \"text\": \"*Tag Name:* <$TAG_URL|$TAG_NAME>\"
+                    \"text\": \"*Tag Name:* <$TAG_URL|$REF>\"
                   },
                   {
                     \"type\": \"mrkdwn\",
