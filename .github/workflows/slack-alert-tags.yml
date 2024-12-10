@@ -2,9 +2,10 @@ name: slack-tag-events
 
 on:
   push:
+    # Trigger on any tag creation or deletion.
     tags:
       - "*"  # Matches any tag push (both creation and deletion)
-      
+
 jobs:
   slack:
     runs-on: ubuntu-latest
@@ -22,18 +23,20 @@ jobs:
           TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
           TIMESTAMP=$(date -u)
 
-          # Determine action type (create or delete based on ref)
+          # Determine if the event is for a tag and not a branch or PR
           if [[ "$REF" == refs/tags/* ]]; then
             TAG_NAME="${REF#refs/tags/}"
+            # Determine action type (created or deleted)
             if [[ "$EVENT_TYPE" == "push" ]]; then
-              # Check if this is a tag creation or deletion
-              if [[ "${GITHUB_EVENT_NAME}" == "push" && "${REF}" =~ ^refs/tags/ ]]; then
-                ACTION="Created"
+              ACTION="Created"
+              # If the ref is deleted, change action to "Deleted"
+              if [[ "$GITHUB_EVENT_NAME" == "push" && "${REF}" =~ ^refs/tags/ && "${GITHUB_REF_TYPE}" == "deleted" ]]; then
+                ACTION="Deleted"
               fi
             fi
           fi
 
-          # Get release information (if applicable)
+          # Get release information (only for tag creation)
           RELEASE_NAME="None"
           if [[ "$ACTION" == "Created" ]]; then
             # Use GitHub API to get release information for the tag
