@@ -1,14 +1,12 @@
 name: slack-tag-events
 
 on:
-  create:
-    # Restrict the event to tag creation only (exclude branches)
+  push:
     tags:
-      - "*"
+      - "*"  # Matches any tag (when a tag is pushed or deleted)
   delete:
-    # Restrict the event to tag deletion only (exclude branches)
     tags:
-      - "*"
+      - "*"  # Matches any tag (for tag deletions)
 
 jobs:
   slack:
@@ -27,20 +25,16 @@ jobs:
           TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
           TIMESTAMP=$(date -u)
 
-          # Ensure the event is related to a tag, not a branch or PR
-          if [[ ! "$REF" =~ refs/tags/ ]]; then
-            echo "Skipping event because it's not related to a tag."
-            exit 0
-          fi
-
-          # Determine action type
-          if [[ "$EVENT_TYPE" == "create" ]]; then
-            ACTION="Created"
-          elif [[ "$EVENT_TYPE" == "delete" ]]; then
+          # Determine action type based on event type
+          if [[ "$EVENT_TYPE" == "push" && "${REF}" == refs/tags/* ]]; then
+            if [[ "${GITHUB_EVENT_REF}" == "refs/tags/*" ]]; then
+              ACTION="Created"
+            fi
+          elif [[ "$EVENT_TYPE" == "delete" && "${REF}" == refs/tags/* ]]; then
             ACTION="Deleted"
           fi
 
-          # Get release information (if applicable) for created tag
+          # Get release information (if applicable)
           RELEASE_NAME="None"
           if [[ "$ACTION" == "Created" ]]; then
             # Use GitHub API to get release information for the tag
@@ -87,8 +81,8 @@ jobs:
                 ]
               }"
 
-          # Include release information only if the tag is created and has a release attached
-          if [[ "$ACTION" == "Created" && "$RELEASE_NAME" != "None" ]]; then
+          # Include release information only if the tag is created
+          if [[ "$ACTION" == "Created" ]]; then
             SLACK_MESSAGE="${SLACK_MESSAGE}, 
               {
                 \"type\": \"section\",
