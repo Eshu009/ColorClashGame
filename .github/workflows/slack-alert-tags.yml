@@ -18,15 +18,15 @@ jobs:
         run: |
           # Extract event data
           EVENT_TYPE="${{ github.event_name }}"
-          REF="${{ github.ref }}"
+          REF="${{ github.event.ref }}" # Works for both create and delete
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
-          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
+          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF}"
           TIMESTAMP=$(date -u)
 
           # Validate the tag name starts with "v" (additional safety check)
-          if [[ ! "$REF" =~ ^refs/tags/v ]]; then
+          if [[ ! "$REF" =~ ^v ]]; then
             echo "Tag does not start with 'v'. Exiting."
             exit 0
           fi
@@ -36,16 +36,6 @@ jobs:
             ACTION="Created"
           elif [[ "$EVENT_TYPE" == "delete" ]]; then
             ACTION="Deleted"
-          fi
-
-          # Get release information (if applicable)
-          RELEASE_NAME="None"
-          if [[ "$ACTION" == "Created" ]]; then
-            # Use GitHub API to get release information for the tag
-            RELEASE_NAME=$(curl -s \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
-              jq -r '.name // "None"')
           fi
 
           # Prepare the message blocks
@@ -83,24 +73,7 @@ jobs:
                     \"text\": \"*Timestamp:* $TIMESTAMP\"
                   }
                 ]
-              }"
-
-          # Include release information only if the tag is created
-          if [[ "$ACTION" == "Created" ]]; then
-            SLACK_MESSAGE="${SLACK_MESSAGE}, 
-              {
-                \"type\": \"section\",
-                \"fields\": [
-                  {
-                    \"type\": \"mrkdwn\",
-                    \"text\": \"*Release:* $RELEASE_NAME\"
-                  }
-                ]
-              }"
-          fi
-
-          # Close the JSON structure for the Slack message
-          SLACK_MESSAGE="${SLACK_MESSAGE}
+              }
             ]
           }"
 
