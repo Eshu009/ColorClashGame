@@ -1,22 +1,13 @@
 name: slack-tag-events
 
 on:
-  create:
+  push:
     tags:
-      - "*"  # Matches any tag
-  delete:
-    tags:
-      - "*"
-
+      - "*"  # Matches any tag push (both creation and deletion)
+      
 jobs:
   slack:
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'create' || github.event_name == 'delete' &&
-      github.event.ref_type == 'tag' && 
-      github.event.pull_request == null && 
-      !contains(github.event.action, 'pull_request')
-    
     steps:
       - name: Send Slack Notification
         env:
@@ -31,11 +22,15 @@ jobs:
           TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
           TIMESTAMP=$(date -u)
 
-          # Determine action type
-          if [[ "$EVENT_TYPE" == "create" ]]; then
-            ACTION="Created"
-          elif [[ "$EVENT_TYPE" == "delete" ]]; then
-            ACTION="Deleted"
+          # Determine action type (create or delete based on ref)
+          if [[ "$REF" == refs/tags/* ]]; then
+            TAG_NAME="${REF#refs/tags/}"
+            if [[ "$EVENT_TYPE" == "push" ]]; then
+              # Check if this is a tag creation or deletion
+              if [[ "${GITHUB_EVENT_NAME}" == "push" && "${REF}" =~ ^refs/tags/ ]]; then
+                ACTION="Created"
+              fi
+            fi
           fi
 
           # Get release information (if applicable)
@@ -44,7 +39,7 @@ jobs:
             # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}" | \
               jq -r '.name // "None"')
           fi
 
