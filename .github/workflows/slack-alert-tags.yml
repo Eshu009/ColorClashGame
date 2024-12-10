@@ -3,11 +3,10 @@ name: slack-tag-events
 on:
   create:
     tags:
-      - "v*"  # This ensures the tag starts with 'v'
+      - "v*"
   delete:
     tags:
-      - "v*"  # This ensures the tag starts with 'v'
-
+      - "v*"
 jobs:
   slack:
     runs-on: ubuntu-latest
@@ -30,12 +29,6 @@ jobs:
             ACTION="Created"
           elif [[ "$EVENT_TYPE" == "delete" ]]; then
             ACTION="Deleted"
-          fi
-
-          # Check if the tag starts with 'v'
-          if [[ ! "$REF" =~ ^refs/tags/v ]]; then
-            echo "Tag does not start with 'v', skipping Slack notification."
-            exit 0
           fi
 
           # Get release information (if applicable)
