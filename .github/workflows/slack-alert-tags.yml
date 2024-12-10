@@ -19,18 +19,17 @@ jobs:
           # Extract event data
           EVENT_TYPE="${{ github.event_name }}"
           REF="${{ github.ref }}"
+          TAG_NAME="${REF#refs/tags/}"  # Extract tag name (remove 'refs/tags/' prefix)
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
-          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
+          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
           TIMESTAMP=$(date -u)
 
           # Determine action type based on event type
-          if [[ "$EVENT_TYPE" == "push" && "${REF}" == refs/tags/* ]]; then
-            if [[ "${GITHUB_EVENT_REF}" == "refs/tags/*" ]]; then
-              ACTION="Created"
-            fi
-          elif [[ "$EVENT_TYPE" == "delete" && "${REF}" == refs/tags/* ]]; then
+          if [[ "$EVENT_TYPE" == "push" && "$REF" == refs/tags/* ]]; then
+            ACTION="Created"
+          elif [[ "$EVENT_TYPE" == "delete" && "$REF" == refs/tags/* ]]; then
             ACTION="Deleted"
           fi
 
@@ -40,7 +39,7 @@ jobs:
             # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}" | \
               jq -r '.name // "None"')
           fi
 
@@ -60,7 +59,7 @@ jobs:
                 \"fields\": [
                   {
                     \"type\": \"mrkdwn\",
-                    \"text\": \"*Tag Name:* <$TAG_URL|$REF>\"
+                    \"text\": \"*Tag Name:* <$TAG_URL|$TAG_NAME>\"
                   },
                   {
                     \"type\": \"mrkdwn\",
