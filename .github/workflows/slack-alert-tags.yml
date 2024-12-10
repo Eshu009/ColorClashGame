@@ -4,16 +4,13 @@ on:
   create:
     tags:
       - "*"  # Matches any tag
-    types:
-      - tag  # Restrict the create event to tags only
   delete:
     tags:
       - "*"  # Matches any tag
-    types:
-      - tag  # Restrict the delete event to tags only
 
 jobs:
   slack:
+    if: startsWith(github.ref, 'refs/tags/') && github.event_name == 'create'  # Only for tag creation
     runs-on: ubuntu-latest
     steps:
       - name: Send Slack Notification
@@ -30,20 +27,18 @@ jobs:
           TIMESTAMP=$(date -u)
 
           # Determine action type
-          if [[ "$EVENT_TYPE" == "create" ]]; then
-            ACTION="Created"
-          elif [[ "$EVENT_TYPE" == "delete" ]]; then
-            ACTION="Deleted"
-          fi
+          ACTION="Created"
 
-          # Get release information (if applicable)
-          RELEASE_NAME="None"
-          if [[ "$ACTION" == "Created" ]]; then
-            # Use GitHub API to get release information for the tag
-            RELEASE_NAME=$(curl -s \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
-              jq -r '.name // "None"')
+          # Get release information for the tag
+          RELEASE_NAME=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
+            jq -r '.name // "None"')
+
+          # Skip if the tag is not associated with a release
+          if [[ "$RELEASE_NAME" == "None" ]]; then
+            echo "No release associated with this tag. Exiting."
+            exit 0
           fi
 
           # Prepare the message blocks
@@ -62,7 +57,7 @@ jobs:
                 \"fields\": [
                   {
                     \"type\": \"mrkdwn\",
-                    \"text\": \"*Tag Name:* <$TAG_URL|$REF>\"
+                    \"text\": \"*Tag Name:* <$TAG_URL|${REF#refs/tags/}>\"
                   },
                   {
                     \"type\": \"mrkdwn\",
@@ -79,26 +74,13 @@ jobs:
                   {
                     \"type\": \"mrkdwn\",
                     \"text\": \"*Timestamp:* $TIMESTAMP\"
-                  }
-                ]
-              }"
-
-          # Include release information only if the tag is created
-          if [[ "$ACTION" == "Created" ]]; then
-            SLACK_MESSAGE="${SLACK_MESSAGE}, 
-              {
-                \"type\": \"section\",
-                \"fields\": [
+                  },
                   {
                     \"type\": \"mrkdwn\",
                     \"text\": \"*Release:* $RELEASE_NAME\"
                   }
                 ]
-              }"
-          fi
-
-          # Close the JSON structure for the Slack message
-          SLACK_MESSAGE="${SLACK_MESSAGE}
+              }
             ]
           }"
 
