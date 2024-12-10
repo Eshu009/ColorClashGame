@@ -2,12 +2,11 @@ name: slack-tag-events
 
 on:
   push:
-    # Trigger on any tag creation (push event for tags)
+    # Trigger on any push event (for both tags and branches)
     tags:
       - "*"  # Matches any tag push (both creation and deletion)
-
   delete:
-    # Trigger on tag deletion (delete event for tags)
+    # Trigger on tag deletion events
     tags:
       - "*"  # Matches any tag deletion
 
@@ -37,6 +36,12 @@ jobs:
             ACTION="Created"
           elif [[ "$EVENT_TYPE" == "delete" && "$REF" == refs/tags/* ]]; then
             ACTION="Deleted"
+          fi
+
+          # Ignore branch-related pushes (branches use refs/heads/)
+          if [[ "$REF" == refs/heads/* ]]; then
+            echo "This is a branch push; skipping notification."
+            exit 0
           fi
 
           # Get release information (only for tag creation)
