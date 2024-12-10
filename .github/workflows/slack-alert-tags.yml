@@ -3,36 +3,20 @@ name: slack-tag-events
 on:
   create:
     tags:
-      - "v*"          # Include only versioned tags, e.g., v1.0.0
-      - "!vercel*"    # Exclude Vercel-specific tags
-      - "!code-rabbit*"  # Exclude Code Rabbit-specific tags
+      - "*"  # Matches any tag
+    types:
+      - tag  # Restrict the create event to tags only
   delete:
     tags:
-      - "v*"          # Include only versioned tags, e.g., v1.0.0
-      - "!vercel*"    # Exclude Vercel-specific tags
-      - "!code-rabbit*"  # Exclude Code Rabbit-specific tags
+      - "*"  # Matches any tag
+    types:
+      - tag  # Restrict the delete event to tags only
 
 jobs:
   slack:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify Tag Event
-        id: verify
-        run: |
-          # Verify that this is a tag event
-          if [[ "${{ github.ref }}" != refs/tags/* ]]; then
-            echo "Not a tag event. Skipping..."
-            exit 0
-          fi
-
-          # Exclude Vercel or Code Rabbit tags
-          if [[ "${{ github.ref }}" == refs/tags/vercel* || "${{ github.ref }}" == refs/tags/code-rabbit* ]]; then
-            echo "Excluded tag from Vercel or Code Rabbit. Skipping..."
-            exit 0
-          fi
-
       - name: Send Slack Notification
-        if: steps.verify.outcome == 'success'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOOK_URL }}
         run: |
@@ -42,8 +26,7 @@ jobs:
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
-          TAG_NAME="${REF#refs/tags/}"
-          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG_NAME}"
+          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
           TIMESTAMP=$(date -u)
 
           # Determine action type
@@ -56,13 +39,14 @@ jobs:
           # Get release information (if applicable)
           RELEASE_NAME="None"
           if [[ "$ACTION" == "Created" ]]; then
+            # Use GitHub API to get release information for the tag
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}" | \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
               jq -r '.name // "None"')
           fi
 
-          # Prepare the Slack message
+          # Prepare the message blocks
           SLACK_MESSAGE="{
             \"blocks\": [
               {
@@ -78,7 +62,7 @@ jobs:
                 \"fields\": [
                   {
                     \"type\": \"mrkdwn\",
-                    \"text\": \"*Tag Name:* <$TAG_URL|$TAG_NAME>\"
+                    \"text\": \"*Tag Name:* <$TAG_URL|$REF>\"
                   },
                   {
                     \"type\": \"mrkdwn\",
@@ -99,6 +83,7 @@ jobs:
                 ]
               }"
 
+          # Include release information only if the tag is created
           if [[ "$ACTION" == "Created" ]]; then
             SLACK_MESSAGE="${SLACK_MESSAGE}, 
               {
@@ -112,11 +97,12 @@ jobs:
               }"
           fi
 
+          # Close the JSON structure for the Slack message
           SLACK_MESSAGE="${SLACK_MESSAGE}
             ]
           }"
 
-          # Send the Slack message
+          # Send the message to Slack
           curl -X POST \
             -H 'Content-type: application/json; charset=utf-8' \
             --data "$SLACK_MESSAGE" \
