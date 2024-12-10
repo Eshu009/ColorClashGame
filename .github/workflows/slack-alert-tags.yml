@@ -1,42 +1,111 @@
-name: Release Tag Notification
+name: slack-tag-events
 
 on:
-  release:
-    types: [created, deleted]
+  create:
+    tags:
+      - "*"  # Matches any tag
+  delete:
+    tags:
+      - "*"
 
 jobs:
-  slack-notification:
+  slack:
     runs-on: ubuntu-latest
-    
-    # Skip if the event is related to pull requests
     if: >
-      github.event.pull_request == null &&
+      github.event_name == 'create' || github.event_name == 'delete' &&
+      github.event.ref_type == 'tag' && 
+      github.event.pull_request == null && 
       !contains(github.event.action, 'pull_request')
     
     steps:
       - name: Send Slack Notification
-        uses: slackapi/slack-github-action@v1.24.0
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        with:
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Release Tag ${{ github.event.action }}*\n\n• Repository: ${{ github.repository }}\n• Ref: ${{ github.ref_name }}\n• Action: ${{ github.event.action }}"
-                  }
-                },
-                {
-                  "type": "context",
-                  "elements": [
-                    {
-                      "type": "mrkdwn",
-                      "text": "Triggered by: ${{ github.actor }}"
-                    }
-                  ]
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_HOOK_URL }}
+        run: |
+          # Extract event data
+          EVENT_TYPE="${{ github.event_name }}"
+          REF="${{ github.ref }}"
+          ACTOR="${{ github.actor }}"
+          REPO_NAME="${{ github.repository }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
+          TIMESTAMP=$(date -u)
+
+          # Determine action type
+          if [[ "$EVENT_TYPE" == "create" ]]; then
+            ACTION="Created"
+          elif [[ "$EVENT_TYPE" == "delete" ]]; then
+            ACTION="Deleted"
+          fi
+
+          # Get release information (if applicable)
+          RELEASE_NAME="None"
+          if [[ "$ACTION" == "Created" ]]; then
+            # Use GitHub API to get release information for the tag
+            RELEASE_NAME=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
+              jq -r '.name // "None"')
+          fi
+
+          # Prepare the message blocks
+          SLACK_MESSAGE="{
+            \"blocks\": [
+              {
+                \"type\": \"header\",
+                \"text\": {
+                  \"type\": \"plain_text\",
+                  \"text\": \"Tag Event: $ACTION\",
+                  \"emoji\": true
                 }
-              ]
-            }
+              },
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Tag Name:* <$TAG_URL|$REF>\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Action:* $ACTION\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*User:* $ACTOR\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Repository:* <$REPO_URL|$REPO_NAME>\"
+                  },
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Timestamp:* $TIMESTAMP\"
+                  }
+                ]
+              }"
+
+          # Include release information only if the tag is created
+          if [[ "$ACTION" == "Created" ]]; then
+            SLACK_MESSAGE="${SLACK_MESSAGE}, 
+              {
+                \"type\": \"section\",
+                \"fields\": [
+                  {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Release:* $RELEASE_NAME\"
+                  }
+                ]
+              }"
+          fi
+
+          # Close the JSON structure for the Slack message
+          SLACK_MESSAGE="${SLACK_MESSAGE}
+            ]
+          }"
+
+          # Send the message to Slack
+          curl -X POST \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "$SLACK_MESSAGE" \
+          $SLACK_WEBHOOK_URL
