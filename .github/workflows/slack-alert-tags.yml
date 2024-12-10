@@ -22,7 +22,7 @@ jobs:
           ACTOR="${{ github.actor }}"
           REPO_NAME="${{ github.repository }}"
           REPO_URL="https://github.com/${{ github.repository }}"
-          TAG_URL="https://github.com/${{ github.repository }}/releases/tag/${REF#refs/tags/}"
+          TAG_NAME="${REF#refs/tags/}" # Strip 'refs/tags/' for tag names
           TIMESTAMP=$(date -u)
 
           # Determine action type
@@ -32,7 +32,7 @@ jobs:
             # Get release information for created tags
             RELEASE_NAME=$(curl -s \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${REF#refs/tags/}" | \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}" | \
               jq -r '.name // "None"')
 
             # Skip notification if the tag isn't associated with a release
@@ -61,7 +61,7 @@ jobs:
                 \"fields\": [
                   {
                     \"type\": \"mrkdwn\",
-                    \"text\": \"*Tag Name:* <$TAG_URL|${REF#refs/tags/}>\"
+                    \"text\": \"*Tag Name:* $TAG_NAME\"
                   },
                   {
                     \"type\": \"mrkdwn\",
