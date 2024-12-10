@@ -2,13 +2,9 @@ name: slack-tag-events
 
 on:
   create:
-    # Restrict the event to tags only
-    tags:
-      - "*"  # Matches any tag
+   ref_type: tag
   delete:
-    # Restrict the event to tags only
-    tags:
-      - "*"
+    ref_type: tag
 
 jobs:
   slack:
