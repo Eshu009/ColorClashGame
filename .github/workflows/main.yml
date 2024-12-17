@@ -1,0 +1,72 @@
+name: Slack Notification on Merge to Main
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  notify_slack:
+    if: ${{ github.event.pull_request.merged == true && 
+            (github.event.pull_request.base.ref == 'main') && 
+            (github.event.pull_request.head.ref == 'Hot' || github.event.pull_request.head.ref == 'Major') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        run: |
+          curl -X POST \
+          -H 'Content-type: application/json; charset=utf-8' \
+          --data '{
+                "blocks": [
+                  {
+                    "type": "header",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "Pull Request Merged to Main",
+                      "emoji": true
+                    }
+                  },
+                  {
+                    "type": "section",
+                    "fields": [
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Repository:*\n${{ github.event.repository.name }}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Merged by:*\n${{ github.event.pull_request.merged_by.login }}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Source Branch:*\n${{ github.event.pull_request.head.ref }}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Target Branch:*\n${{ github.event.pull_request.base.ref }}"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "*Pull Request Title:*\n${{ github.event.pull_request.title }}"
+                    },
+                    "accessory": {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Pull Request",
+                        "emoji": true
+                      },
+                      "url": "${{ github.event.pull_request.html_url }}",
+                      "action_id": "button-action"
+                    }
+                  }
+                ]
+              }' \
+          ${{ secrets.SLACK_HOOK_URL }}
+        shell: bash
